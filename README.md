@@ -56,9 +56,11 @@ Configure the following in **Settings → Secrets and variables → Actions**; d
 | `BASE_RPC_URL` | Trusted Base Mainnet RPC for deployment, chain ID 8453. |
 | `DEPLOYER_PRIVATE_KEY` | Funded deployment account; use separate, tightly restricted environment secrets. |
 | `BASESCAN_API_KEY` | Etherscan-compatible API key for source verification. |
-| `VFV_SAFE_OWNER` | Optional on Sepolia; required on mainnet by the workflow. Must be an independently verified, controllable address. |
+| `VFV_SAFE_OWNER` | Not required by the GitHub workflow: it selects the owner from the network mapping below. For local deployment, set it to an independently verified, controllable address. |
 
 The deployment workflow is **manual only**, runs build, tests, and Slither before deployment, checks the RPC chain ID and broadcasts only after successful checks. Configure the `base-mainnet` environment with required human reviewers and appropriate secret restrictions before any mainnet run; this configuration is not created automatically. The workflow requires the exact confirmation string `DEPLOY MAINNET` for mainnet. A mainnet or Sepolia broadcast spends gas. Verification can fail **after** a transaction has been sent; inspect the transaction and explorer before retrying.
+
+The workflow maps the owner explicitly: Base Mainnet (`8453`) uses `0x380d3B3f68bBBC49B42Cdb0389A65457FD406f0c` (Vault 1), and Base Sepolia (`84532`) uses `0xFaeB67f71786B28E83d734B05501b9497189922b` (Vault 2). These are user-supplied addresses; the workflow does not prove that either address is a Safe or that its signers control it. Independently verify the address on the selected network before broadcasting.
 
 ```bash
 # Manual Base Sepolia deployment after credentials and controls are configured:
