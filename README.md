@@ -6,7 +6,7 @@ An AI-assisted GitHub and Base L2 development pipeline for VannFamilyVentures LL
 
 ## Quick start
 
-Prerequisites: Node.js 20+, Git, authenticated [GitHub CLI](https://cli.github.com/), and Foundry 1.7.1 (`forge`, `cast`). Solidity 0.8.28 is pinned in `foundry.toml` and is downloaded by Foundry on first build. No `forge-std` or Solidity submodules are needed. For a tested Linux installation example see [contract setup](contracts/script/README.md).
+Prerequisites: Node.js 20+ (Node.js 22 recommended), Git, authenticated [GitHub CLI](https://cli.github.com/), and Foundry 1.7.1 (`forge`, `cast`). Solidity 0.8.28 is pinned in `foundry.toml` and is downloaded by Foundry on first build. No `forge-std` or Solidity submodules are needed. For a tested Linux installation example see [contract setup](contracts/script/README.md).
 
 ```bash
 gh repo clone dextervann1-rgb/vfv-autonomous-agentic-pipeline
