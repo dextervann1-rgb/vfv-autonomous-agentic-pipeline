@@ -1,0 +1,88 @@
+name: Base contract security checks and deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      network:
+        description: Deployment network
+        required: true
+        type: choice
+        default: base-sepolia
+        options:
+          - base-sepolia
+          - base
+      contract:
+        description: Contract to deploy
+        required: true
+        type: choice
+        default: AutonomousRegistry
+        options:
+          - AutonomousRegistry
+      mainnet_confirmation:
+        description: For Base Mainnet only, type DEPLOY MAINNET
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.network }}
+  cancel-in-progress: false
+
+jobs:
+  security-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: foundry-rs/foundry-toolchain@dba66c27052e63476d886f22216e119ba7e615bf # v1
+        with:
+          version: v1.7.1
+      - name: Compile and test
+        run: |
+          forge build
+          forge test -vvv
+      - name: Install static analyzer
+        run: python3 -m pip install --disable-pip-version-check slither-analyzer==0.11.5
+      - name: Analyze contracts with Slither
+        run: slither . --filter-paths 'contracts/test|contracts/script|contracts/lib'
+
+  deploy:
+    needs: security-checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Configure required reviewers on the base-mainnet environment before using mainnet.
+    environment: ${{ inputs.network == 'base' && 'base-mainnet' || 'base-sepolia' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: foundry-rs/foundry-toolchain@dba66c27052e63476d886f22216e119ba7e615bf # v1
+        with:
+          version: v1.7.1
+      - name: Validate inputs, network and credentials; broadcast and verify
+        env:
+          NETWORK: ${{ inputs.network }}
+          CONTRACT: ${{ inputs.contract }}
+          MAINNET_CONFIRMATION: ${{ inputs.mainnet_confirmation }}
+          DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          VFV_SAFE_OWNER: ${{ secrets.VFV_SAFE_OWNER }}
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          BASE_SEPOLIA_RPC_URL: ${{ secrets.BASE_SEPOLIA_RPC_URL }}
+          ETHERSCAN_API_KEY: ${{ secrets.BASESCAN_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$CONTRACT" == AutonomousRegistry ]] || { echo 'Unsupported contract' >&2; exit 1; }
+          [[ -n "$DEPLOYER_PRIVATE_KEY" && -n "$ETHERSCAN_API_KEY" ]] || { echo 'Set DEPLOYER_PRIVATE_KEY and BASESCAN_API_KEY as environment secrets' >&2; exit 1; }
+          if [[ "$NETWORK" == base ]]; then
+            [[ "$MAINNET_CONFIRMATION" == 'DEPLOY MAINNET' ]] || { echo 'Mainnet confirmation missing' >&2; exit 1; }
+            [[ -n "$VFV_SAFE_OWNER" ]] || { echo 'Mainnet requires VFV_SAFE_OWNER' >&2; exit 1; }
+            RPC_URL="$BASE_RPC_URL"; EXPECTED_CHAIN=8453
+          elif [[ "$NETWORK" == base-sepolia ]]; then
+            RPC_URL="$BASE_SEPOLIA_RPC_URL"; EXPECTED_CHAIN=84532
+          else
+            echo 'Unsupported network' >&2; exit 1
+          fi
+          [[ -n "$RPC_URL" ]] || { echo 'RPC URL is missing' >&2; exit 1; }
+          [[ "$(cast chain-id --rpc-url "$RPC_URL")" == "$EXPECTED_CHAIN" ]] || { echo 'RPC chain ID does not match the selected network' >&2; exit 1; }
+          forge script contracts/script/Deploy.s.sol:DeployAutonomousRegistry --rpc-url "$RPC_URL" --broadcast --verify -vvv

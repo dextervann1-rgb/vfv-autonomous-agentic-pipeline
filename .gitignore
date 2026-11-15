@@ -1,0 +1,18 @@
+# Dependencies and build artifacts
+node_modules/
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+out/
+cache/
+broadcast/
+coverage/
+
+# Local credentials and key material
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.keystore
+.DS_Store

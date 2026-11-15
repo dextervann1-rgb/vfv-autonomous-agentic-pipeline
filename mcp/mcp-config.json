@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "vfv-base-architect": {
+      "command": "node",
+      "args": ["/absolute/path/to/vfv-autonomous-agentic-pipeline/mcp/base-mcp-server.mjs"]
+    }
+  }
+}
