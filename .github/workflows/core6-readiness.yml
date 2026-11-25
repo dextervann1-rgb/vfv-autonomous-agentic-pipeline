@@ -1,0 +1,64 @@
+name: Core 6 Readiness Audit
+
+on:
+  schedule:
+    - cron: '15 8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  deployments: read
+
+concurrency:
+  group: core6-readiness-audit
+  cancel-in-progress: false
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout collector
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Run Core 6 readiness collector
+        env:
+          GH_TOKEN: ${{ secrets.CORE6_GH_TOKEN }}
+          OWNER: dextervann1-rgb
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "::error::CORE6_GH_TOKEN repository secret is not configured."
+            exit 1
+          fi
+          chmod +x .github/scripts/collect-core6-readiness.sh
+          .github/scripts/collect-core6-readiness.sh --strict | tee core6-readiness.txt
+          .github/scripts/collect-core6-readiness.sh --json > core6-readiness.json
+
+      - name: Publish readiness summary
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [[ -f core6-readiness.txt ]]; then
+            {
+              echo '## Core 6 Readiness'
+              echo
+              cat core6-readiness.txt
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload readiness reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core6-readiness-${{ github.run_number }}
+          path: |
+            core6-readiness.txt
+            core6-readiness.json
+          if-no-files-found: warn
+          retention-days: 30
