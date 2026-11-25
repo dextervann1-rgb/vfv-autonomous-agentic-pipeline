@@ -373,7 +373,12 @@ jobs:
 
           if run_sepolia and not sepolia_ok:
               raise RuntimeError(f"Base Sepolia pre-check failed: {sepolia_block}")
-          hitl_required = bool(vuln_findings or any(not r["branch_protected"] for r in repo_inventory))
+          if any(not r["branch_protected"] or not r["has_sepolia_env"] or not r["has_mainnet_env"] for r in repo_inventory):
+              hitl_required = True
+          else:
+              hitl_required = bool(vuln_findings)
+          scaffold_files = (["MainActivity.kt", "build.gradle.kts", "README.md"]
+                            if enable_autonomy else ["README.md"])
 
           bundle = {
               "workflow_version": "5.0-CONTINUED",
@@ -389,7 +394,7 @@ jobs:
               "hybrid_oracle_project": hybrid_project,
               "android_game_scaffold": {
                   "package_name": pkg_name,
-                  "files": ["MainActivity.kt", "build.gradle.kts", "README.md"],
+                  "files": scaffold_files,
                   "target_sdk": 36,
               },
               "base_sepolia_precheck": {"chain_id": 84532, "passed": sepolia_ok, "block_hex": sepolia_block},
